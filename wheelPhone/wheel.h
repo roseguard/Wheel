@@ -1,17 +1,17 @@
 #ifndef WHEEL_H
 #define WHEEL_H
 
-#include <QWidget>
 #include <QGraphicsView>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
-#include <QTcpSocket>
-#include <QTcpServer>
-#include <QTextStream>
-#include <QDesktopWidget>
-#include <QKeyEvent>
 #include <QTimer>
+#include <QDesktopWidget>
+#include <QAccelerometer>
+#include <QAccelerometerReading>
+#include <QDebug>
+
+#include <time.h>
 
 #define stepVal 5
 #define changeTurn 10
@@ -22,9 +22,6 @@ class Wheel : public QGraphicsView
 public:
     Wheel(QWidget *parent = 0);
     ~Wheel();
-
-    QTcpSocket *socket;
-    QTcpServer *server;
 
     QDesktopWidget      *desk;
     QGraphicsScene      *scene;
@@ -45,10 +42,16 @@ public:
 
     float validX, validY;
 public slots:
-    void newSocket();
-    void newMessage();
     void rotateToTarget();
     void makeBorderStep();
+
+public:
+    QAccelerometer *obj;
+    QAccelerometerReading *reader;
+    bool needSend = false;
+
+public slots:
+    void newDatas();
 };
 
 #endif // WHEEL_H

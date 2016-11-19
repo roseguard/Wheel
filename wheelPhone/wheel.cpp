@@ -1,9 +1,5 @@
 #include "wheel.h"
-#include <QCursor>
-#include <QGraphicsItemAnimation>
-#include <QDesktopWidget>
-#include <QThread>
-#include <time.h>
+
 
 #define baseLeft 30
 #define baseRight 70
@@ -23,10 +19,10 @@ Wheel::Wheel(QWidget *parent)
     scene = new QGraphicsScene(this);
     setScene(scene);
 
-    background = new QGraphicsPixmapItem(QPixmap("/home/arhcitect/back.jpg").scaled(desk->width(), desk->height()));
+    background = new QGraphicsPixmapItem(QPixmap(":/img/back.jpg").scaled(desk->width(), desk->height()));
     scene->addItem(background);
 
-    wheelItem = new QGraphicsPixmapItem(QPixmap("/home/arhcitect/wheel.png").scaled(validY*20, validY*20));
+    wheelItem = new QGraphicsPixmapItem(QPixmap(":/img/wheel.png").scaled(validY*20, validY*20));
     wheelItem->setPos(validX*50, desk->height()-wheelItem->pixmap().height()*1.2);
     scene->addItem(wheelItem);
 
@@ -36,27 +32,31 @@ Wheel::Wheel(QWidget *parent)
     leftBorders.append(tempBorder);
     scene->addItem(tempBorder);
 
-
     tempBorder = new QGraphicsRectItem(validX*baseRight, 0, validY*10, validX*5);
     tempBorder->setBrush(Qt::black);
     rightBorders.append(tempBorder);
     scene->addItem(tempBorder);
 
+    obj = new QAccelerometer(this);
+    connect(obj, SIGNAL(readingChanged()), this, SLOT(newDatas()));
+    obj->start();
 
+    timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(rotateToTarget()));
+    timer->start(3);
 
-    server = new QTcpServer(this);
-    connect(server, SIGNAL(newConnection()), this, SLOT(newSocket()));
-    socket = Q_NULLPTR;
-    server->listen(QHostAddress::Any, 31034);
+    borderStep = new QTimer(this);
+    connect(borderStep, SIGNAL(timeout()), this, SLOT(makeBorderStep()));
+    borderStep->start(10);
 
     showFullScreen();
 }
 
 Wheel::~Wheel()
 {
+    timer->stop();
+    borderStep->stop();
     delete wheelItem;
-    if(socket)
-        delete socket;
     delete desk;
     delete background;
     foreach (QGraphicsRectItem * ditem, leftBorders) {
@@ -67,37 +67,10 @@ Wheel::~Wheel()
     }
 }
 
-void Wheel::newSocket()
+void Wheel::newDatas()
 {
-    if(socket)
-        delete socket;
-    socket = server->nextPendingConnection();
-    connect(socket, SIGNAL(readyRead()), this, SLOT(newMessage()));
-
-    timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(rotateToTarget()));
-    timer->start(3);
-
-    borderStep = new QTimer(this);
-    connect(borderStep, SIGNAL(timeout()), this, SLOT(makeBorderStep()));
-    borderStep->start(10);
-}
-
-void Wheel::newMessage()
-{
-    QTextStream stream(socket);
-    QVector<QString> datas;
-    QString tempDat;
-    stream >> tempDat;
-    while(!tempDat.isEmpty())
-    {
-        datas.append(tempDat);
-        stream >> tempDat;
-        if(tempDat == "end")
-            break;
-    }
-        rotarget = datas.at(0).toInt();
-        return;
+    reader = obj->reading();
+    rotarget = ((int)reader->y())*10;
 }
 
 void Wheel::rotateToTarget()
